@@ -80,13 +80,22 @@ adds `CODE_INVALID_REQUEST_HEADERS` and the mapping ahead of the generic 400.
 
 This was found on 2026-09-13 by the `--prefer-lowest` CI corner, run locally: the suite passed on
 0.1.1 and `ExceptionPassthroughTest` errored on 0.1.0 with `Undefined constant
-ApiException::CODE_INVALID_REQUEST_HEADERS`. The constraint had been written `^0.1` by copying the
-sibling package's shape, which is the failure mode worth naming — the floor is a claim about which
-releases work, and copying one from a package with a different history asserts something nobody
-checked. **Raise the floor whenever a test depends on a fix**, and do not widen it back without
+ApiException::CODE_INVALID_REQUEST_HEADERS`.
+
+**The `^0.1` came from the core package's own README**, which recommended it thirty lines above the
+section documenting the two credential routes — the fix and the instruction that undoes it, in one
+file. That is what makes this worth writing down rather than filing as a typo: the wrong floor was
+not a guess, it was the upstream package's stated advice, which is the last place anyone thinks to
+check. The core package corrected it the same day, in its 0.1.2.
+
+So the lesson is not "read the constraint more carefully". It is that **a floor is a claim about
+which releases work, and only the `--prefer-lowest` corner ever tests it.** Nothing else here would
+have: the suite, PHPStan level 10 and a real-application install all passed, because all three
+resolved 0.1.1. Raise the floor whenever a test depends on a fix, and do not widen it back without
 running that corner.
 
-The minor is still the breaking position on a 0.x line, so `^0.1.1` means `>=0.1.1 <0.2.0`.
+The minor is still the breaking position on a 0.x line, so `^0.1.1` means `>=0.1.1 <0.2.0` — and it
+accepts 0.1.2, which is docs-only with `src/` byte-identical to 0.1.1, so no bump is needed here.
 
 ## Facts worth not rediscovering
 
