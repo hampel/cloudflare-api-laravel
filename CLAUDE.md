@@ -99,12 +99,12 @@ accepts 0.1.2, which is docs-only with `src/` byte-identical to 0.1.1, so no bum
 
 ## Facts worth not rediscovering
 
-- **A forgotten fake body is LOUD here, unlike the sibling packages.** `Http::fake()` with no
-  arguments answers an empty 200, and on this API every endpoint replies in an envelope — so an
-  empty body cannot be a valid answer and `MalformedResponseException` is raised rather than the
-  response reading as *this zone has no records*. `linode-api-laravel` has the opposite behaviour
-  and has to warn about it. Do not rely on this; it is an absence, and the README says give the
-  fake a body.
+- **A forgotten fake body is LOUD here.** `Http::fake()` with no arguments answers an empty 200,
+  and on this API every endpoint replies in an envelope — so an empty body cannot be a valid answer
+  and `MalformedResponseException` is raised rather than the response reading as *this zone has no
+  records*. That is not the usual behaviour for a client of this kind: an API that answers a bare
+  collection, or that uses 204, has to treat an empty body as an empty result and cannot be strict
+  here. Do not rely on it; it is an absence, and the README says give the fake a body.
 - **A global `page_size` cannot be set well, because the limits are per endpoint.** DNS records
   take 1 to 5000000 and default to 100; zones and accounts take 5 to 50 and default to 20. So 100
   — the obvious value — is refused by the zones endpoint. The shipped config leaves it null, and
@@ -114,7 +114,8 @@ accepts 0.1.2, which is docs-only with `src/` byte-identical to 0.1.1, so no bum
 - **There is no `version` setting and its absence is asserted.** `/client/v4` has been the only
   version since 2014 and the core package holds it as a constant; a settable one here would invite
   an application to configure it, and the only values it could take are wrong. This is the one
-  place the config shape deliberately departs from `linode-api-laravel`, which does have one.
+  place the config shape deliberately departs from the usual shape for a wrapper of this kind,
+  which carries a version setting because its API has more than one version to point at.
 - **A zone that does not exist answers 403 with code 9109, not 404**, and the whole discrimination
   rides on the error code in the response BODY — so a transport that reshaped the body would
   collapse *no such zone* into *bad credential*. `ExceptionPassthroughTest` asserts both halves
