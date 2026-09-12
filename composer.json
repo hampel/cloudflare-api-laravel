@@ -62,6 +62,7 @@
         }
     },
     "config": {
+        "allow-plugins": {},
         "sort-packages": true
     },
     "scripts": {
