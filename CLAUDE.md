@@ -68,11 +68,20 @@ clutter to be tidied away:
 
   The third is the one that would survive review, because it fails as a plausible-sounding
   transport error rather than as a PHP notice — and on this API it destroys a distinction the
-  core package works hard for, since a 403 with code 9109 means *no such zone* while a 403 with
-  any other code means the credential is wrong. **Only the Laravel 12 CI job catches any of
-  them** — on 13 the suite passes with the first two gone.
+  core package works hard for, since a 403 with code 9109 and "Invalid zone identifier" means *no
+  such zone*, the same code with "Cannot use the access token from location" means a token refused
+  by its IP filter, and a 403 with any other code means the credential is wrong. **Only the
+  Laravel 12 CI job catches any of them** — on 13 the suite passes with the first two gone.
 
-## The core package constraint is `^1.0`, and one major only
+## The core package constraint is `^1.0.1`, and one major only
+
+**The patch floor is deliberate.** 1.0.0 read every 403 with code 9109 as a missing zone, but
+Cloudflare also sends 9109 for a token used from outside its IP address filter, so from a filtered
+address `find()` answered "no such zone" for a zone that exists. 1.0.1 raises
+`NotAuthenticatedException` for that case, and
+`ExceptionPassthroughTest::a_token_refused_by_its_ip_filter_raises_rather_than_reading_as_a_missing_zone`
+depends on it — measured 2026-09-13, it fails on 1.0.0 and passes on 1.0.1, and the
+`--prefer-lowest` corner resolves 1.0.1 only because of the floor.
 
 **Not `^0.1.1|^1.0`.** This package re-exports the core package's types through a facade whose
 `@method` annotations are the only types a call through it has, so spanning two majors would mean
@@ -136,10 +145,16 @@ running that corner.
   an application to configure it, and the only values it could take are wrong. This is the one
   place the config shape deliberately departs from the usual shape for a wrapper of this kind,
   which carries a version setting because its API has more than one version to point at.
-- **A zone that does not exist answers 403 with code 9109, not 404**, and the whole discrimination
-  rides on the error code in the response BODY — so a transport that reshaped the body would
-  collapse *no such zone* into *bad credential*. `ExceptionPassthroughTest` asserts both halves
-  through a fake rather than trusting the core package's own suite.
+- **A zone that does not exist answers 403 with code 9109, not 404 — and 9109 is not unique to
+  zones.** Cloudflare sends the same code for a token used from outside its IP address filter, so
+  the discrimination rides on the error code AND the message in the response BODY. A transport that
+  kept codes but reshaped or dropped messages would turn a location refusal back into *no such
+  zone*, and one that reshaped the body would collapse *no such zone* into *bad credential*.
+  `ExceptionPassthroughTest` asserts all three through a fake rather than trusting the core
+  package's own suite.
+- **`verify()` ignores the token's IP address filter.** A filtered token verifies as `active` and
+  every real call from outside the filter is then refused; the README's startup check lists one
+  page of zones after verifying for that reason.
 - **`ResponseReceived` and `ConnectionFailed` do not fire, but `RequestSending` does** — and the
   symmetry invites the opposite guess, which is how the wrong version of this note reached three
   packages. Laravel dispatches the first two from `PendingRequest::send()`, a layer above the

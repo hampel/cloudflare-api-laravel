@@ -7,10 +7,17 @@
 - `CLOUDFLARE_API_TOKEN` is the documented token variable. `CLOUDFLARE_TOKEN` is still read when
   `CLOUDFLARE_API_TOKEN` is unset or empty
 
+### Changed
+
+- requires `hampel/cloudflare-api` `^1.0.1`, raised from `^1.0`. A token refused by its IP address
+  filter now raises `NotAuthenticatedException`, where `Zones::find()` previously returned `null`
+
 ### Fixed
 
 - `README` documents registering the provider under Laravel Zero, which does not run package
   discovery, and publishing the config there once the provider is listed
+- `README` documents that `verify()` passes a token refused by its IP address filter, and shows a
+  startup check that lists one page of zones after verifying
 
 ## 1.0.0 (2026-09-13)
 

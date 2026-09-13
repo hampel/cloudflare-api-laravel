@@ -139,10 +139,21 @@ $this->cloudflare->client('customers')->zones()->all();
 Check the credential at startup, before anything that matters:
 
 ```php
-$token = Cloudflare::verify();     // raises NotAuthenticatedException if it is not usable
+$token = Cloudflare::verify();     // raises NotAuthenticatedException if the token is invalid
 
 $token->isActive();
 $token->expiresWithinDays(30);
+```
+
+**Verification ignores the token's IP address filter.** A token restricted to other addresses
+verifies as `active` from this one, and then every zone and account call is refused with "Cannot use
+the access token from location". Verification says the credential exists and is live, not that it
+can be used from here. The first real call answers that and raises `NotAuthenticatedException`, so
+a startup check that wants the whole answer lists one page of zones after verifying:
+
+```php
+Cloudflare::verify();
+Cloudflare::zones()->list(1, 5);   // raises NotAuthenticatedException if refused from here
 ```
 
 **`verify()` cannot tell you what the token may do.** Cloudflare publishes a token's permissions
@@ -201,15 +212,18 @@ request is sent, so a wrong value costs a failed call and never a wasted one.
 
 **A zone that does not exist answers 403, not 404.** Cloudflare will not confirm to a credential
 which zone ids exist, so "no such zone" and "not your zone" are the same reply. `zones()->find()`
-absorbs it and returns null, but only for error code 9109 — a 403 for any other reason still
-raises, because silently returning null for a misconfigured credential would send whoever reads it
-to the wrong dashboard.
+absorbs it and returns null, but only for error code 9109 with the message "Invalid zone
+identifier" — a 403 for any other reason still raises, because silently returning null for a
+misconfigured credential would send whoever reads it to the wrong dashboard.
 
-**A bad token arrives two ways and only one of them is a 401.** A value of the right shape but the
+Cloudflare also sends code 9109 for a token used from outside its IP address filter, so the code
+alone decides nothing; the message is what separates the two.
+
+**A bad token arrives three ways and only one of them is a 401.** A value of the right shape but the
 wrong content answers 401; a value Cloudflare cannot parse at all — a placeholder left in a config
-file, a truncated copy — answers 400 before authentication runs. Both raise
-`NotAuthenticatedException`, so one catch around a startup check covers the commonest
-configuration mistake as well as the rarer one.
+file, a truncated copy — answers 400 before authentication runs; and a token used from an address
+outside its IP filter answers 403. All three raise `NotAuthenticatedException`, so one catch around
+a startup check covers them.
 
 **Telescope will not show this traffic.** Laravel dispatches `ResponseReceived` and
 `ConnectionFailed` from `PendingRequest::send()`, a layer above the handler stack this adapter
@@ -264,9 +278,9 @@ What the major covers is this package's own surface: the service provider's bind
 tag, the config file's keys, `CloudflareManager`'s methods, the facade, and the two exceptions.
 
 **It does not cover what comes through the facade**, and cannot. Every accessor forwards to
-`hampel/cloudflare-api`, so that package's `^1.0` is what governs `Client`, the endpoints and the
-entities — read its versioning section alongside this one. Two consequences worth knowing before
-they surprise you:
+`hampel/cloudflare-api`, so that package's major version is what governs `Client`, the endpoints
+and the entities — read its versioning section alongside this one. Two consequences worth knowing
+before they surprise you:
 
 - **A `match` over `RecordType` needs a `default` arm.** That enum mirrors Cloudflare's own list,
   which nobody here controls, so a record type Cloudflare adds arrives in a minor release.

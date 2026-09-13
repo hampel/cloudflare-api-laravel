@@ -78,8 +78,8 @@ use Psr\Http\Message\ResponseInterface;
  * contract is unchanged. http_errors in particular must stay off: with it on, a 404 would
  * arrive as a Guzzle exception and the core package would report it as a transport failure
  * instead of mapping it to NotFoundException - and on this API that mapping is load-bearing,
- * because a 403 with code 9109 means "no such zone" while a 403 with any other code means the
- * credential is wrong.
+ * because the same 403 and code 9109 mean "no such zone" or "token refused from this address"
+ * depending on the message alone, while a 403 with any other code means the credential is wrong.
  *
  * WHAT IT DOES NOT DO: raise ResponseReceived or ConnectionFailed. Laravel dispatches those from
  * PendingRequest::send(), a layer above the handler stack, which this class never calls - so

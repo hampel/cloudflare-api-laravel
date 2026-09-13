@@ -114,13 +114,37 @@ final class ExceptionPassthroughTest extends TestCase
         // returning null for that would turn a misconfigured credential into "the zone does not
         // exist", which sends whoever reads it to the wrong dashboard.
         //
-        // The whole distinction rides on the error CODE in the body, so a transport that
-        // swallowed or reshaped the body would collapse the two into one.
+        // The distinction rides on the error code AND message in the body, so a transport that
+        // swallowed or reshaped the body would collapse them into one.
         Http::fake([
             'api.cloudflare.com/*' => Http::response(self::failure(10000, 'Authentication error'), 403),
         ]);
 
         $this->expectException(NotPermittedException::class);
+
+        Cloudflare::zones()->find(self::ZONE_ID);
+    }
+
+    #[Test]
+    public function a_token_refused_by_its_ip_filter_raises_rather_than_reading_as_a_missing_zone(): void
+    {
+        // Cloudflare sends code 9109 for two unrelated things: an unknown zone id, and a token
+        // used from outside its IP address filter. Only the MESSAGE tells them apart, so this is
+        // the case where a transport keeping codes but reshaping or dropping messages would do
+        // silent damage: a location refusal would come back as "no such zone" for a zone that
+        // exists. Asserted through the adapter, with the message byte for byte as Cloudflare
+        // sends it, rather than trusting the core package's own suite.
+        //
+        // Needs hampel/cloudflare-api 1.0.1; 1.0.0 read every 9109 as a missing zone.
+        Http::fake([
+            'api.cloudflare.com/*' => Http::response(
+                self::failure(9109, 'Cannot use the access token from location: 203.0.113.99'),
+                403
+            ),
+        ]);
+
+        $this->expectException(NotAuthenticatedException::class);
+        $this->expectExceptionMessage('Cannot use the access token from location: 203.0.113.99');
 
         Cloudflare::zones()->find(self::ZONE_ID);
     }
