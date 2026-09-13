@@ -81,11 +81,20 @@ use Psr\Http\Message\ResponseInterface;
  * because a 403 with code 9109 means "no such zone" while a 403 with any other code means the
  * credential is wrong.
  *
- * WHAT IT DOES NOT DO: Laravel raises its RequestSending and ResponseReceived events from
- * PendingRequest::send(), which is a layer above the handler stack, so those events do not
- * fire and anything listening for them - Telescope's HTTP client watcher - will not show this
+ * WHAT IT DOES NOT DO: raise ResponseReceived or ConnectionFailed. Laravel dispatches those from
+ * PendingRequest::send(), a layer above the handler stack, which this class never calls - so
+ * anything listening for them, Telescope's HTTP client watcher included, will not show this
  * traffic. The core package logs every request through PSR-3 instead, which under Laravel
  * reaches the application log.
+ *
+ * RequestSending DOES fire, which is the half worth stating because the symmetry invites the
+ * opposite guess. PendingRequest::__construct() registers it as a before-sending callback and
+ * buildBeforeSendingHandler() puts those callbacks INSIDE the handler stack, which is exactly
+ * what this class drives. So a listener that counts requests on RequestSending and pairs them
+ * with responses will count requests that never get one.
+ *
+ * Measured on Laravel 13.31.0 and Laravel 12.61.1 - see tests/EventTest.php, which listens for
+ * all three rather than restating this.
  */
 final class PendingRequestClient implements ClientInterface
 {

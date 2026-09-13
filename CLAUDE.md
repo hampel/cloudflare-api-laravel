@@ -120,9 +120,15 @@ accepts 0.1.2, which is docs-only with `src/` byte-identical to 0.1.1, so no bum
   rides on the error code in the response BODY — so a transport that reshaped the body would
   collapse *no such zone* into *bad credential*. `ExceptionPassthroughTest` asserts both halves
   through a fake rather than trusting the core package's own suite.
-- **Laravel's `RequestSending` / `ResponseReceived` events do not fire.** They are raised in
-  `PendingRequest::send()`, a layer above the handler stack. Telescope's HTTP client watcher will
-  not show this traffic; the core package's PSR-3 logging is what does.
+- **`ResponseReceived` and `ConnectionFailed` do not fire, but `RequestSending` does** — and the
+  symmetry invites the opposite guess, which is how the wrong version of this note reached three
+  packages. Laravel dispatches the first two from `PendingRequest::send()`, a layer above the
+  handler stack, which the adapter never calls; it registers `RequestSending` as a before-sending
+  callback that `buildBeforeSendingHandler()` puts *inside* the stack the adapter does drive.
+  Telescope listens for `ResponseReceived`, so the practical conclusion is unchanged — it shows
+  nothing — but a listener pairing `RequestSending` with a response counts requests that never get
+  one. `tests/EventTest.php` measures all three rather than restating this; verified on Laravel
+  13.31.0 and 12.61.1.
 - **`failOnDeprecation` is inert in a Testbench package without help.** Laravel's `HandleExceptions`
   replaces PHPUnit's error handler when the application boots. `withoutDeprecationHandling()` in
   `setUp()` fixes it for test-executed paths — but the provider's own `register()` has already run

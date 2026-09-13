@@ -160,10 +160,15 @@ file, a truncated copy — answers 400 before authentication runs. Both raise
 `NotAuthenticatedException`, so one catch around a startup check covers the commonest
 configuration mistake as well as the rarer one.
 
-**Telescope will not show this traffic.** Laravel raises its `RequestSending` and
-`ResponseReceived` events from `PendingRequest::send()`, a layer above the handler stack this
-adapter drives, so those events do not fire. The core package logs every request through PSR-3
-instead, which under Laravel reaches the application log.
+**Telescope will not show this traffic.** Laravel dispatches `ResponseReceived` and
+`ConnectionFailed` from `PendingRequest::send()`, a layer above the handler stack this adapter
+drives, so neither fires and anything listening for them — Telescope's HTTP watcher included —
+sees nothing. The core package logs every request through PSR-3 instead, which under Laravel
+reaches the application log.
+
+`RequestSending` **does** fire, because Laravel raises it from a before-sending callback inside
+the stack. So a listener that counts requests on it and pairs them with responses will count
+requests that never get one.
 
 **Cloudflare's rate limit is counted over five minutes**, and going over it blocks every call for
 the next five rather than only the one that went over. The response metadata carries what is left
