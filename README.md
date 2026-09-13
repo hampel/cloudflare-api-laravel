@@ -1,5 +1,13 @@
 # Cloudflare API for Laravel
 
+[![Tests](https://github.com/hampel/cloudflare-api-laravel/actions/workflows/tests.yml/badge.svg)](https://github.com/hampel/cloudflare-api-laravel/actions/workflows/tests.yml)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/hampel/cloudflare-api-laravel.svg?style=flat-square)](https://packagist.org/packages/hampel/cloudflare-api-laravel)
+[![Total Downloads](https://img.shields.io/packagist/dt/hampel/cloudflare-api-laravel.svg?style=flat-square)](https://packagist.org/packages/hampel/cloudflare-api-laravel)
+[![Open Issues](https://img.shields.io/github/issues-raw/hampel/cloudflare-api-laravel.svg?style=flat-square)](https://github.com/hampel/cloudflare-api-laravel/issues)
+[![License](https://img.shields.io/packagist/l/hampel/cloudflare-api-laravel.svg?style=flat-square)](https://packagist.org/packages/hampel/cloudflare-api-laravel)
+
+By [Simon Hampel](mailto:simon@hampelgroup.com)
+
 Laravel integration for [`hampel/cloudflare-api`](https://github.com/hampel/cloudflare-api): a
 service provider, a manager for named API tokens, a facade — and one adapter that is the reason
 the package exists. Install it in a Laravel or Laravel Zero application that manages DNS, and
