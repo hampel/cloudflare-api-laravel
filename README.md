@@ -1,4 +1,4 @@
-# hampel/cloudflare-api-laravel
+# Cloudflare API for Laravel
 
 Laravel integration for [`hampel/cloudflare-api`](https://github.com/hampel/cloudflare-api): a
 service provider, a manager for named API tokens, a facade — and one adapter that is the reason
