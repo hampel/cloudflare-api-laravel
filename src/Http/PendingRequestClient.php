@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hampel\Cloudflare\Api\Laravel\Http;
 
+use Closure;
 use GuzzleHttp\RequestOptions;
 use GuzzleHttp\TransferStats;
 use GuzzleHttp\Utils;
@@ -45,6 +46,13 @@ use Psr\Http\Message\ResponseInterface;
  * Rebuilding here means the stubs, the stray-request setting, `Http::globalOptions()` and
  * `Http::globalRequestMiddleware()` are all read at the moment of sending, so ordering stops
  * mattering.
+ *
+ * THE FACTORY ITSELF IS RESOLVED PER REQUEST TOO, for the same reason one level up.
+ * `Http::swap(new Factory)` - how a test starts from a clean set of fakes, since fake() merges -
+ * binds a new factory into the container. A client holding the factory it was built with keeps
+ * answering from the old one, past the new fakes and past the new factory's
+ * preventStrayRequests(), so a test believing itself guarded sends a real request carrying the
+ * configured token. The constructor takes a resolver for that reason, not an instance.
  *
  * The Guzzle handler underneath is built once and reused, which is what stops that costing
  * anything: the handler owns curl's connection pool, so keep-alive survives between requests
@@ -108,8 +116,11 @@ final class PendingRequestClient implements ClientInterface
      */
     private $handler = null;
 
+    /**
+     * @param  Closure(): Factory  $factory  resolves the factory at the moment of sending
+     */
     public function __construct(
-        private readonly Factory $factory,
+        private readonly Closure $factory,
         private readonly float $timeout,
         private readonly float $connectTimeout,
     ) {
@@ -117,12 +128,13 @@ final class PendingRequestClient implements ClientInterface
 
     public function sendRequest(RequestInterface $request): ResponseInterface
     {
-        $this->handler ??= Utils::chooseHandler();
+        // Into a local: the handler's non-null narrowing does not survive the resolver call below.
+        $handler = $this->handler ??= Utils::chooseHandler();
 
-        return $this->factory->createPendingRequest()
+        return ($this->factory)()->createPendingRequest()
             ->timeout($this->timeout)
             ->connectTimeout($this->connectTimeout)
-            ->setHandler($this->handler)
+            ->setHandler($handler)
             ->buildClient()
             ->send($request, [
                 RequestOptions::SYNCHRONOUS => true,

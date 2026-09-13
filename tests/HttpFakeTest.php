@@ -9,6 +9,7 @@ use Hampel\Cloudflare\Api\Entity\DnsRecord;
 use Hampel\Cloudflare\Api\Entity\Zone;
 use Hampel\Cloudflare\Api\Exception\NotFoundException;
 use Hampel\Cloudflare\Api\Laravel\Facades\Cloudflare;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\StrayRequestException;
 use Illuminate\Support\Facades\Http;
@@ -133,6 +134,45 @@ final class HttpFakeTest extends TestCase
         ]);
 
         $this->assertSame('late.example.com', $client->zones()->get(self::ZONE_ID)->name);
+    }
+
+    #[Test]
+    public function swapping_the_factory_after_the_client_was_resolved_still_intercepts(): void
+    {
+        // Http::swap(new Factory) is how a test gets a clean set of fakes, because fake() merges
+        // and the first match wins. swap() binds the new factory into the container, so a
+        // transport that held the factory it was built with would keep answering from the old one
+        // - PendingRequestClient resolves it at the moment of sending instead.
+        $client = Cloudflare::client();
+
+        Http::fake(['api.cloudflare.com/*' => Http::response(self::envelope(self::zone(null, 'before.example.com')))]);
+        $this->assertSame('before.example.com', $client->zones()->get(self::ZONE_ID)->name);
+
+        Http::swap(new Factory());
+        Http::fake(['api.cloudflare.com/*' => Http::response(self::envelope(self::zone(null, 'after.example.com')))]);
+
+        $this->assertSame('after.example.com', $client->zones()->get(self::ZONE_ID)->name);
+    }
+
+    #[Test]
+    public function a_swapped_factorys_stray_request_guard_applies_to_a_client_resolved_before_it(): void
+    {
+        // The dangerous half of the same property. preventStrayRequests() is set on the NEW
+        // factory; a transport still holding the old, unfaked one would send the request for real,
+        // carrying the configured token, with nothing to stop it.
+        //
+        // Pointed at a reserved .invalid host, so that if this ever regresses the escaped request
+        // fails to resolve instead of reaching Cloudflare.
+        $this->container()->make('config')->set('cloudflare.base_uri', 'https://api.cloudflare.invalid');
+
+        $client = Cloudflare::client();
+
+        Http::swap(new Factory());
+        Http::preventStrayRequests();
+
+        $this->expectException(StrayRequestException::class);
+
+        $client->zones()->get(self::ZONE_ID);
     }
 
     #[Test]
