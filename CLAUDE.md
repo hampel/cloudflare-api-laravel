@@ -39,7 +39,7 @@ to exist.
 
 ## The adapter, and why it looks the way it does
 
-Three decisions in `PendingRequestClient` are load-bearing and each has a way of looking like
+Five decisions in `PendingRequestClient` are load-bearing and each has a way of looking like
 clutter to be tidied away:
 
 - **The pending request is rebuilt on every send.** `Factory::fake()` *replaces* the factory's
@@ -47,6 +47,25 @@ clutter to be tidied away:
   client built once and kept holds a snapshot, and a fake registered after it was built never
   applies. On a DNS client that is not a failing test, it is a live change to somebody's zone.
   `HttpFakeTest::faking_after_the_client_was_resolved_still_intercepts` is the test.
+- **The factory itself is resolved on every send, through a closure.** `Http::swap(new Factory)`
+  binds a new factory into the container; a client holding the one it was built with keeps
+  answering from the old factory, past the new fakes and past its `preventStrayRequests()`.
+  Measured here on 2026-09-14 before the fix: the escaped request was really sent and failed only
+  because the test's `base_uri` is a reserved `.invalid` host. **Keep that host in
+  `HttpFakeTest::a_swapped_factorys_stray_request_guard_applies_to_a_client_resolved_before_it`**
+  — probing it with the fix reverted is otherwise a real request to Cloudflare with the suite's
+  dummy token. Closed local ports are no substitute: under WSL-style mirrored networking they time
+  out rather than refuse.
+- **The pending request's options are passed on by hand, as an allowlist.** `PendingRequest`
+  merges `->timeout()`, `->connectTimeout()` and `Http::globalOptions()` only inside its own
+  `sendRequest()`, which the adapter never calls — so before `transportOptions()` existed the
+  configured timeouts arrived at the handler as nothing (measured 2026-09-14). Passing them
+  wholesale is the opposite bug: a global `headers`, `query` or `json` would rewrite the request
+  the core package built. `TransportTest` pins both directions, and each test was probed by
+  breaking the adapter both ways. **Build the allowlist one key at a time**: Guzzle 8.2 types
+  `send()`'s options as an array shape, and PHPStan 2.1.22 — the `--prefer-lowest` floor — is
+  reported to widen an array built in a loop over key names and fail level 10. Not reproduced
+  here; the key-by-key form passes level 10 on 2.1.22, measured 2026-09-14.
 - **One Guzzle handler is shared across those rebuilds.** The handler owns curl's connection pool,
   so keep-alive survives even though the stack around it is new each time. Records page at 100 by
   default, and Cloudflare's rate limit is counted over five minutes, so a walk is exactly the

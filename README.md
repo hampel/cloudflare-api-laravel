@@ -198,8 +198,13 @@ trusting: a 404 still arrives as `NotFoundException` rather than as an unsuccess
 The core package raises `MalformedResponseException` rather than reading it as "this zone has no
 records", so the mistake is loud here. Do not rely on that; rely on the body.
 
-`Http::fake()` can be registered before or after the client is resolved. That ordering is the one
-thing an adapter like this usually gets wrong, and the tests pin it.
+`Http::fake()` can be registered before or after the client is resolved, and `Http::swap()` can
+replace the factory after it too. That ordering is the one thing an adapter like this usually gets
+wrong, and the tests pin it.
+
+`Http::globalOptions()` applies to this traffic for transport settings only — timeouts, TLS, proxy,
+protocol version and curl options. A global header, query or body option is not applied, because
+the core package builds each request and it is sent as built.
 
 ## Traps
 

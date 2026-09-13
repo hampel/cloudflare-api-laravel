@@ -111,8 +111,11 @@ return [
     | Transport
     |--------------------------------------------------------------------------
     |
-    | Applied to Laravel's HTTP client on every request, so a consumer's own
-    | Http::globalOptions() and Http::globalRequestMiddleware() apply alongside them.
+    | Applied to Laravel's HTTP client on every request, along with a consumer's own
+    | Http::globalRequestMiddleware() and the TRANSPORT options from
+    | Http::globalOptions(): timeouts, TLS settings such as verify and cert, proxy,
+    | protocol version and curl. A global headers, query or body option is not
+    | applied - the core package builds the request, and it is sent as built.
     |
     | There is no redirect setting: Guzzle's PSR-18 entry point does not follow
     | redirects, and no endpoint this package wraps answers one.

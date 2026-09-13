@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## Unreleased
+
+### Fixed
+
+- `Http::swap()` is followed by a client resolved before the swap, including the swapped factory's
+  fakes and `preventStrayRequests()`
+- the configured `timeout` and `connect_timeout`, and the transport options from
+  `Http::globalOptions()`, reach the request. A global header, query or body option is not applied
+
 ## 1.1.0 (2026-09-13)
 
 ### Added

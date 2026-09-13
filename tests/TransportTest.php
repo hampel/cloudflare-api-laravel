@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Hampel\Cloudflare\Api\Laravel\Tests;
 
+use Hampel\Cloudflare\Api\Entity\DnsRecord;
+use Hampel\Cloudflare\Api\Laravel\CloudflareManager;
 use Hampel\Cloudflare\Api\Laravel\Facades\Cloudflare;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Http\Client\Request;
@@ -135,5 +137,91 @@ final class TransportTest extends TestCase
         $this->expectExceptionMessage('between 5 and 50 for zones');
 
         Cloudflare::zones()->list();
+    }
+
+    #[Test]
+    public function the_configured_timeouts_reach_the_request(): void
+    {
+        // Not automatic. PendingRequest merges its options only inside its own sendRequest(), and
+        // the adapter sends through the built Guzzle client instead, so the timeouts set on the
+        // pending request never reach a request unless they are passed on by hand. Read at the
+        // handler, which is where Guzzle acts on them.
+        $this->container()->make(Config::class)->set('cloudflare.timeout', 7);
+        $this->container()->make(Config::class)->set('cloudflare.connect_timeout', 3);
+        $this->container()->forgetInstance(ClientInterface::class);
+        $this->container()->forgetInstance(CloudflareManager::class);
+
+        $options = $this->optionsSeenByTheHandler();
+
+        Http::fake(['api.cloudflare.com/*' => Http::response(self::envelope(self::zone()))]);
+
+        Cloudflare::zones()->get(self::ZONE_ID);
+
+        $this->assertSame(7.0, $options[0]['timeout'] ?? null);
+        $this->assertSame(3.0, $options[0]['connect_timeout'] ?? null);
+    }
+
+    #[Test]
+    public function a_global_transport_option_reaches_the_request(): void
+    {
+        // Http::globalOptions() is how an application sets a proxy or a CA bundle for all of its
+        // outbound traffic, and the README says it applies here.
+        Http::globalOptions([
+            'verify' => '/etc/ssl/certs/corporate-ca.pem',
+            'proxy' => ['https' => 'http://proxy.example.test:3128', 'no' => ['localhost']],
+        ]);
+
+        $options = $this->optionsSeenByTheHandler();
+
+        Http::fake(['api.cloudflare.com/*' => Http::response(self::envelope(self::zone()))]);
+
+        Cloudflare::zones()->get(self::ZONE_ID);
+
+        $this->assertSame('/etc/ssl/certs/corporate-ca.pem', $options[0]['verify'] ?? null);
+        $this->assertSame(['https' => 'http://proxy.example.test:3128', 'no' => ['localhost']], $options[0]['proxy'] ?? null);
+    }
+
+    #[Test]
+    public function a_global_option_that_would_change_the_request_is_not_applied(): void
+    {
+        // The core package builds the request; the transport sends it as built. A global header,
+        // query or body would otherwise overwrite its Accept and Authorization headers and
+        // replace its query string or body - on this package, rewriting a DNS record's content.
+        Http::globalOptions([
+            'headers' => ['Accept' => 'text/html', 'Authorization' => 'Bearer not-this-one'],
+            'query' => ['injected' => '1'],
+            'json' => ['injected' => true],
+        ]);
+
+        Http::fake(['api.cloudflare.com/*' => Http::response(self::envelope(self::record()))]);
+
+        Cloudflare::records()->create(self::ZONE_ID, DnsRecord::a('www', '203.0.113.10'));
+
+        Http::assertSent(fn (Request $request): bool => $request->url()
+                === 'https://api.cloudflare.com/client/v4/zones/' . self::ZONE_ID . '/dns_records'
+            && $request->hasHeader('Accept', 'application/json')
+            && $request->hasHeader('Authorization', 'Bearer token-under-test')
+            && $request['type'] === 'A'
+            && $request['content'] === '203.0.113.10'
+            && ! isset($request['injected']));
+    }
+
+    /**
+     * Records the Guzzle options of every request, as the handler receives them.
+     *
+     * @return \ArrayObject<int, array<array-key, mixed>>
+     */
+    private function optionsSeenByTheHandler(): \ArrayObject
+    {
+        /** @var \ArrayObject<int, array<array-key, mixed>> $seen */
+        $seen = new \ArrayObject();
+
+        Http::globalMiddleware(static fn (callable $handler): callable => static function (RequestInterface $request, array $options) use ($handler, $seen): mixed {
+            $seen[] = $options;
+
+            return $handler($request, $options);
+        });
+
+        return $seen;
     }
 }
