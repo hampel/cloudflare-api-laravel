@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 1.0.0 (2026-09-13)
+
+### Changed
+
+- requires `hampel/cloudflare-api` `^1.0`, raised from `^0.1.1`. That release makes
+  `DnsRecord::$type` nullable and moves `Zones::identifier()` to `Support\Identifier::for()`;
+  neither is reached through this package's own surface
+- `README` documents what the major version covers, and what reaches through the facade from the
+  core package instead
+
+### Fixed
+
+- `RequestSending` is documented as firing. `ResponseReceived` and `ConnectionFailed` do not fire;
+  the adapter's docblock, the `README` and `CLAUDE.md` previously said all three did not.
+  `tests/EventTest.php` asserts the split
+
 ## 0.1.0 (2026-09-13)
 
 Initial release.

@@ -19,9 +19,9 @@ use ReflectionMethod;
  * `Cloudflare::zones()->all()` analysable is the annotation, not the code. So an accessor added
  * to the core package's Client in a later release is a call that works at runtime and loses its
  * type silently - the failure mode a facade is most prone to, and the one nothing else here
- * would report. The core package is 0.x and expected to grow accessors - it wraps a dozen of
- * Cloudflare's two thousand endpoints - which makes this cheaper to have from the start than to
- * add after the first one is missed.
+ * would report. The core package wraps a dozen of Cloudflare's two thousand endpoints and is
+ * expected to grow accessors in minor releases, which makes this cheaper to have from the start
+ * than to add after the first one is missed.
  *
  * Deliberately not a Testbench test: it reads classes, boots nothing, and is quicker to reach for
  * when the core package is upgraded.

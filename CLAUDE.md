@@ -72,30 +72,42 @@ clutter to be tidied away:
   any other code means the credential is wrong. **Only the Laravel 12 CI job catches any of
   them** — on 13 the suite passes with the first two gone.
 
-## The core package constraint is `^0.1.1`, and the patch floor is deliberate
+## The core package constraint is `^1.0`, and one major only
 
-**Not `^0.1`.** 0.1.0 maps every 400 to `ValidationException`, so a token Cloudflare cannot parse
-escapes the `catch (NotAuthenticatedException)` this package's README documents. 0.1.1 is what
-adds `CODE_INVALID_REQUEST_HEADERS` and the mapping ahead of the generic 400.
+**Not `^0.1.1|^1.0`.** This package re-exports the core package's types through a facade whose
+`@method` annotations are the only types a call through it has, so spanning two majors would mean
+a consumer's `DnsRecord::$type` is nullable or not depending on which base version resolved. A
+wrapper cannot promise a stabler surface than the package it re-exports.
 
-This was found on 2026-09-13 by the `--prefer-lowest` CI corner, run locally: the suite passed on
-0.1.1 and `ExceptionPassthroughTest` errored on 0.1.0 with `Undefined constant
-ApiException::CODE_INVALID_REQUEST_HEADERS`.
+1.0.0 made two breaking changes and neither reaches `src/`: `DnsRecord::$type` became
+`?RecordType`, and `Zones::identifier()` moved to `Support\Identifier::for()`. Nothing here
+touches either — the facade re-exports `DnsRecords`, the *endpoint*, not the entity. Verified
+on 2026-09-13 across both supported Laravel majors before the constraint moved.
 
-**The `^0.1` came from the core package's own README**, which recommended it thirty lines above the
-section documenting the two credential routes — the fix and the instruction that undoes it, in one
-file. That is what makes this worth writing down rather than filing as a typo: the wrong floor was
-not a guess, it was the upstream package's stated advice, which is the last place anyone thinks to
-check. The core package corrected it the same day, in its 0.1.2.
+**Watch for a new accessor on `Client` rather than for a major version.** The core package wraps a
+dozen of Cloudflare's two thousand endpoints, so it is expected to grow accessors, and its
+`RecordType` mirrors a list Cloudflare controls — a type Cloudflare adds arrives in a **minor**
+release, because promising otherwise would promise a major on Cloudflare's schedule. So write a
+`default` arm in any `match` over `RecordType`, and note that `FacadeConformanceTest` is what turns
+a new accessor into a failing test rather than a call that silently loses its type.
 
-So the lesson is not "read the constraint more carefully". It is that **a floor is a claim about
-which releases work, and only the `--prefer-lowest` corner ever tests it.** Nothing else here would
-have: the suite, PHPStan level 10 and a real-application install all passed, because all three
-resolved 0.1.1. Raise the floor whenever a test depends on a fix, and do not widen it back without
+### A floor is a claim, and only `--prefer-lowest` tests it
+
+Kept because the discipline outlives the constraint it was learned on. The original floor was
+written `^0.1`, which permits 0.1.0 — and 0.1.0 maps every 400 to `ValidationException`, so a token
+Cloudflare cannot parse escaped the `catch (NotAuthenticatedException)` this package's README
+documents.
+
+Found on 2026-09-13 by running the `--prefer-lowest` corner locally: the suite passed on 0.1.1 and
+`ExceptionPassthroughTest` errored on 0.1.0 with `Undefined constant
+ApiException::CODE_INVALID_REQUEST_HEADERS`. Nothing else caught it — the suite, PHPStan level 10
+and a real-application install all passed, because all three resolved the newest release.
+
+**The wrong floor was not a guess, it was the upstream package's stated advice**, which is the last
+place anyone thinks to check; its README recommended `^0.1` thirty lines above the section
+documenting the fix that `^0.1` excludes. So the lesson is not "read the constraint more
+carefully": raise the floor whenever a test depends on a fix, and do not widen it back without
 running that corner.
-
-The minor is still the breaking position on a 0.x line, so `^0.1.1` means `>=0.1.1 <0.2.0` — and it
-accepts 0.1.2, which is docs-only with `src/` byte-identical to 0.1.1, so no bump is needed here.
 
 ## Facts worth not rediscovering
 
@@ -163,8 +175,8 @@ accepts 0.1.2, which is docs-only with `src/` byte-identical to 0.1.1, so no bum
 `Cloudflare::zones()` goes through the manager's `__call()` and returns `mixed`; the
 `@method static` block is what makes `Cloudflare::zones()->all()` analysable. So an accessor added
 to the core package's `Client` in a later release is a call that works at runtime and silently
-loses its type — and the core package is 0.x wrapping a dozen of Cloudflare's two thousand
-endpoints, so it is expected to grow accessors. `tests/FacadeConformanceTest.php` compares the two
+loses its type — and the core package wraps a dozen of Cloudflare's two thousand endpoints, so it
+is expected to grow accessors in minor releases. `tests/FacadeConformanceTest.php` compares the two
 lists in both directions and checks every annotated return type resolves.
 
 The manager needs the same coverage and gets it from one `@mixin Client` line, which cannot drift.

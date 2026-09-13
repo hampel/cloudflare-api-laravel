@@ -29,9 +29,9 @@ use Illuminate\Support\Facades\Facade;
  * Everything after configuredAccounts() mirrors a method on the client, reached through the
  * manager's __call(). FacadeConformanceTest asserts that the two lists stay identical, so a
  * method added to the client in a later release of the core package shows up as a failing test
- * rather than as a call that silently loses its type. The core package is 0.x and expected to
- * grow accessors, which makes that cheaper to have from the start than to add after the first
- * one is missed.
+ * rather than as a call that silently loses its type. The core package wraps a dozen of
+ * Cloudflare's two thousand endpoints and is expected to grow accessors in minor releases, which
+ * makes that cheaper to have from the start than to add after the first one is missed.
  *
  * endpoint() is the one annotation that gives something up: on the client it is generic,
  * returning the class it was handed, and a @method line cannot express that. Reach for

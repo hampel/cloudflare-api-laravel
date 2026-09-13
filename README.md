@@ -204,6 +204,24 @@ Laravel Zero is supported and has its own test, because its container does not b
 client factory that a full Laravel application does — without the binding this package adds, a
 fake would silently fail to intercept and the request would reach the real API.
 
+## Versioning
+
+Semantic versioning. Write `^1.0`.
+
+What the major covers is this package's own surface: the service provider's bindings and publish
+tag, the config file's keys, `CloudflareManager`'s methods, the facade, and the two exceptions.
+
+**It does not cover what comes through the facade**, and cannot. Every accessor forwards to
+`hampel/cloudflare-api`, so that package's `^1.0` is what governs `Client`, the endpoints and the
+entities — read its versioning section alongside this one. Two consequences worth knowing before
+they surprise you:
+
+- **A `match` over `RecordType` needs a `default` arm.** That enum mirrors Cloudflare's own list,
+  which nobody here controls, so a record type Cloudflare adds arrives in a minor release.
+- **Payload contents are Cloudflare's, not ours.** The `raw` property on every entity,
+  `DnsRecord::$data` and `ApiResponse::$envelope` are containers this package's major version
+  covers; what Cloudflare puts inside them it can change whenever it likes.
+
 ## Licence
 
 MIT. See `LICENSE.md`.
