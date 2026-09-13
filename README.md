@@ -48,6 +48,18 @@ there is no config, no bound manager and no alias until the provider is listed b
 ],
 ```
 
+With the provider listed, the config publishes as it does in Laravel — **but only after listing
+it**, and the command is hidden from `list`. Before the provider is registered the same command
+reports "No publishable resources", which reads as though publishing is unsupported:
+
+```bash
+php application vendor:publish --tag=cloudflare-config
+```
+
+`application` is Laravel Zero's default entry point; use your own if the application renamed it.
+Publishing is needed only to change the config's structure, such as adding a second account; the
+shipped keys all read from environment variables.
+
 The global `Cloudflare` alias comes from discovery too, so it stays unavailable. Import the facade
 by its class, or inject the manager:
 

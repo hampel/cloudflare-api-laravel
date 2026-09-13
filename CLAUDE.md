@@ -162,6 +162,13 @@ running that corner.
   Laravel Zero 13.0.0 application, before and after the provider was listed, with `Http::fake()`
   intercepting through both the injected manager and the imported facade.
 
+  **`vendor:publish` exists in Laravel Zero but is hidden**, and it is easy to conclude otherwise
+  twice over. Laravel Zero's `config/commands.php` lists `VendorPublishCommand` under `hidden`, so
+  it is absent from `list`; and before the provider is listed it answers "No publishable resources
+  for tag [cloudflare-config]", because `publishes()` runs in `boot()`. Two consumer sessions
+  reported it as missing on 2026-09-13 on the strength of the command list. Measured the same day:
+  with the provider listed it copies the config, exit 0, byte-identical to the shipped file.
+
   **`LaravelZeroTest` does not cover this** — it registers the provider by hand, so it proves the
   factory binding and never exercises registration. Testing registration would mean installing
   Laravel Zero as a dev dependency to observe Laravel Zero's own behaviour, so it is documented in
