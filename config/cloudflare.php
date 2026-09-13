@@ -45,12 +45,18 @@ return [
     | zone, cannot be verified, and grants everything the account can do to anything
     | that gets hold of it.
     |
+    | CLOUDFLARE_API_TOKEN is the variable to set. CLOUDFLARE_TOKEN, the earlier name,
+    | is still read when CLOUDFLARE_API_TOKEN is unset OR EMPTY -- `?:` rather than
+    | env()'s default, because a blank CLOUDFLARE_API_TOKEN= line is not null, so the
+    | default would never apply and an account with a working CLOUDFLARE_TOKEN would be
+    | refused.
+    |
     */
 
     'accounts' => [
 
         'main' => [
-            'token' => env('CLOUDFLARE_TOKEN'),
+            'token' => env('CLOUDFLARE_API_TOKEN') ?: env('CLOUDFLARE_TOKEN'),
         ],
 
     ],

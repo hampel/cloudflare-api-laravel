@@ -32,8 +32,11 @@ php artisan vendor:publish --tag=cloudflare-config
 Set a token in the environment and nothing else is required:
 
 ```ini
-CLOUDFLARE_TOKEN=your-api-token
+CLOUDFLARE_API_TOKEN=your-api-token
 ```
+
+`CLOUDFLARE_TOKEN`, the name earlier releases documented, is still read when
+`CLOUDFLARE_API_TOKEN` is unset or empty, so an existing `.env` keeps working.
 
 ### Laravel Zero
 
@@ -83,8 +86,8 @@ narrower one is the one to reach for first. The configuration holds as many as y
 
 ```php
 'accounts' => [
-    'main' => ['token' => env('CLOUDFLARE_TOKEN')],
-    'customers' => ['token' => env('CLOUDFLARE_CUSTOMERS_TOKEN')],
+    'main' => ['token' => env('CLOUDFLARE_API_TOKEN')],
+    'customers' => ['token' => env('CUSTOMERS_CLOUDFLARE_API_TOKEN')],
 ],
 ```
 

@@ -111,6 +111,14 @@ running that corner.
 
 ## Facts worth not rediscovering
 
+- **The token variable is `CLOUDFLARE_API_TOKEN`, and `CLOUDFLARE_TOKEN` is read with `?:`, not as
+  `env()`'s default.** The rename brings it in line with the sibling wrappers' `*_API_TOKEN`
+  without breaking an existing `.env`. The obvious form, `env('CLOUDFLARE_API_TOKEN',
+  env('CLOUDFLARE_TOKEN'))`, fails in the one situation a rename creates: a blank
+  `CLOUDFLARE_API_TOKEN=` line copied from an updated example while the real token still sits
+  under the old name is an empty string, not null, so the default never applies and the account
+  is refused for having no token. `ConfigurationTest` pins all five cases, and with the `env()`
+  default form it fails exactly the blank one — measured 2026-09-13.
 - **A forgotten fake body is LOUD here.** `Http::fake()` with no arguments answers an empty 200,
   and on this API every endpoint replies in an envelope — so an empty body cannot be a valid answer
   and `MalformedResponseException` is raised rather than the response reading as *this zone has no
