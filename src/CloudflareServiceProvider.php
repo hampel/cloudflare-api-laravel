@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hampel\Cloudflare\Api\Laravel;
 
 use GuzzleHttp\Psr7\HttpFactory as Psr17Factory;
+use Hampel\Cloudflare\Api\Laravel\Exception\InvalidConfiguration;
 use Hampel\Cloudflare\Api\Laravel\Http\PendingRequestClient;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Container\Container;
@@ -19,13 +20,27 @@ use Psr\Log\LoggerInterface;
 /**
  * Wires the Cloudflare API manager into the container.
  *
- * ClientInterface is bound separately, and by interface, because it is the package's extension
- * point: rebind or decorate it and every account's client picks the replacement up. The default
- * sends through Laravel's HTTP client, which is what makes the package's traffic visible to
- * Http::fake() - see PendingRequestClient.
+ * The transport is bound under this package's own key, HTTP_CLIENT, and the manager is built from
+ * that key alone. Rebind or decorate it and every account's client picks the replacement up. The
+ * default sends through Laravel's HTTP client, which is what makes the package's traffic visible
+ * to Http::fake() - see PendingRequestClient.
+ *
+ * NOT `Psr\Http\Client\ClientInterface`, deliberately. That is one key in the container, and
+ * other API wrappers bind it too; singleton() on a bound key replaces it, so the last provider
+ * registered supplied the transport for every package - one package's timeouts governing
+ * another's requests, and a fix to one adapter reaching an application only when that package
+ * happened to register last. Measured in an application with three such wrappers installed. Nor
+ * does the manager fall back to a ClientInterface binding when one exists: another package, or an
+ * unrelated library, may be the one that bound it.
  */
 final class CloudflareServiceProvider extends ServiceProvider
 {
+    /**
+     * The container key this package's transport is bound under, and the override point for an
+     * application that must send this package's requests through a client of its own.
+     */
+    public const HTTP_CLIENT = 'cloudflare.http_client';
+
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/cloudflare.php', 'cloudflare');
@@ -58,7 +73,13 @@ final class CloudflareServiceProvider extends ServiceProvider
         $this->app->bindIf(RequestFactoryInterface::class, static fn (): RequestFactoryInterface => new Psr17Factory());
         $this->app->bindIf(StreamFactoryInterface::class, static fn (): StreamFactoryInterface => new Psr17Factory());
 
-        $this->app->singleton(ClientInterface::class, function (): ClientInterface {
+        // singletonIf, so an application's own binding of this key survives whichever order the
+        // providers run in. A full Laravel application registers package-discovered providers
+        // before its own, so its override would win anyway; Laravel Zero runs no discovery, the
+        // order is its config/app.php list, and an AppServiceProvider listed first would otherwise
+        // have its override silently replaced here. No other package binds this key, so this does
+        // not reopen the collision the key exists to avoid.
+        $this->app->singletonIf(self::HTTP_CLIENT, function (): ClientInterface {
             $config = $this->app->make(Config::class);
 
             // The Factory the Http facade resolves, read on every send rather than once here:
@@ -74,9 +95,15 @@ final class CloudflareServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(CloudflareManager::class, function (): CloudflareManager {
+            $client = $this->app->make(self::HTTP_CLIENT);
+
+            if (! $client instanceof ClientInterface) {
+                throw InvalidConfiguration::httpClient(self::HTTP_CLIENT, get_debug_type($client));
+            }
+
             return new CloudflareManager(
                 $this->app->make(Config::class),
-                $this->app->make(ClientInterface::class),
+                $client,
                 $this->app->make(RequestFactoryInterface::class),
                 $this->app->make(StreamFactoryInterface::class),
                 $this->app->make(LoggerInterface::class),

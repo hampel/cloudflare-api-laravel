@@ -206,6 +206,32 @@ wrong, and the tests pin it.
 protocol version and curl options. A global header, query or body option is not applied, because
 the core package builds each request and it is sent as built.
 
+## Sending through your own HTTP client
+
+An application with its own outbound HTTP policy — a proxy-aware, SSRF-guarded client that every
+request must go through — binds it under this package's key, and every account's client uses it:
+
+```php
+use Hampel\Cloudflare\Api\Laravel\CloudflareServiceProvider;
+
+$this->app->singleton(CloudflareServiceProvider::HTTP_CLIENT, fn () => new YourPsr18Client());
+```
+
+The key is `cloudflare.http_client`, and the binding must be a PSR-18 `ClientInterface`. It wins
+whichever order the providers register in. Traffic sent through your own client does not pass
+through Laravel's HTTP client, so `Http::fake()` no longer sees it.
+
+**Binding `Psr\Http\Client\ClientInterface` does not reach this package**, deliberately. That key
+is shared by every package that binds it, so the last one registered would otherwise supply the
+transport for all of them. To send several packages through one client, bind each package's own
+key to it:
+
+```php
+use Psr\Http\Client\ClientInterface;
+
+$this->app->bind(CloudflareServiceProvider::HTTP_CLIENT, fn ($app) => $app->make(ClientInterface::class));
+```
+
 ## Traps
 
 **A global `page_size` cannot be set well, so the shipped config leaves it null.** The limits are

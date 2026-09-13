@@ -6,6 +6,7 @@ namespace Hampel\Cloudflare\Api\Laravel\Tests;
 
 use Hampel\Cloudflare\Api\Laravel\CloudflareManager;
 use Hampel\Cloudflare\Api\Laravel\CloudflareServiceProvider;
+use Hampel\Cloudflare\Api\Laravel\Exception\InvalidConfiguration;
 use Hampel\Cloudflare\Api\Laravel\Http\PendingRequestClient;
 use Illuminate\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Config\Repository as Config;
@@ -75,9 +76,28 @@ final class ConfigurationTest extends TestCase
     }
 
     #[Test]
-    public function the_transport_is_bound_by_interface_so_it_can_be_replaced(): void
+    public function the_transport_is_bound_under_this_packages_key_and_not_the_shared_psr18_key(): void
     {
-        $this->assertInstanceOf(PendingRequestClient::class, $this->container()->make(ClientInterface::class));
+        // The key is the documented override point, so its spelling is asserted rather than left
+        // to the constant. The shared PSR-18 key is left unbound: binding it is what let one API
+        // wrapper supply the transport for every other one installed beside it.
+        $this->assertSame('cloudflare.http_client', CloudflareServiceProvider::HTTP_CLIENT);
+        $this->assertInstanceOf(PendingRequestClient::class, $this->container()->make(CloudflareServiceProvider::HTTP_CLIENT));
+        $this->assertFalse($this->container()->bound(ClientInterface::class));
+    }
+
+    #[Test]
+    public function a_transport_binding_that_cannot_send_names_the_key(): void
+    {
+        // The key is a string, so the container will hand back whatever an application bound
+        // there. Refused when the manager is built, with the key in the message, rather than
+        // failing as a type error somewhere inside the core package.
+        $this->container()->instance(CloudflareServiceProvider::HTTP_CLIENT, new \stdClass());
+
+        $this->expectException(InvalidConfiguration::class);
+        $this->expectExceptionMessage('cloudflare.http_client must be a Psr\\Http\\Client\\ClientInterface; it resolved to stdClass');
+
+        $this->container()->make(CloudflareManager::class);
     }
 
     #[Test]
@@ -108,7 +128,8 @@ final class ConfigurationTest extends TestCase
         (new CloudflareServiceProvider($app))->register();
 
         $this->assertTrue($app->bound(CloudflareManager::class));
-        $this->assertTrue($app->bound(ClientInterface::class));
+        $this->assertTrue($app->bound(CloudflareServiceProvider::HTTP_CLIENT));
+        $this->assertFalse($app->bound(ClientInterface::class));
         $this->assertTrue($app->bound(RequestFactoryInterface::class));
         $this->assertTrue($app->bound(StreamFactoryInterface::class));
         $this->assertSame('main', $app->make(Config::class)->get('cloudflare.default'));

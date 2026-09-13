@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 1.2.0 (2026-09-14)
+
+### Changed
+
+- the transport is bound under `cloudflare.http_client`, exposed as
+  `CloudflareServiceProvider::HTTP_CLIENT`, and `CloudflareManager` is built from that key alone.
+  An application overrides the transport by binding that key; its binding is kept whichever order
+  the providers register in
+- `Psr\Http\Client\ClientInterface` is no longer bound by this package, and binding it no longer
+  changes the transport this package uses. Another package binding it no longer replaces this
+  package's transport either
+- a `cloudflare.http_client` binding that is not a PSR-18 client raises `InvalidConfiguration`
+  naming the key
+
 ## 1.1.1 (2026-09-14)
 
 ### Fixed

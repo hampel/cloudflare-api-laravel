@@ -44,6 +44,18 @@ final class InvalidConfiguration extends CloudflareException
     }
 
     /**
+     * The container binding for this package's transport resolved to something that cannot send.
+     */
+    public static function httpClient(string $key, string $type): self
+    {
+        return new self(sprintf(
+            'The container binding %s must be a Psr\\Http\\Client\\ClientInterface; it resolved to %s.',
+            $key,
+            $type
+        ));
+    }
+
+    /**
      * The core package refused the base URI or the page size.
      *
      * Wrapped rather than passed through, so the message names the configuration rather than an

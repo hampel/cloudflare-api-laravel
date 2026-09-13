@@ -6,6 +6,7 @@ namespace Hampel\Cloudflare\Api\Laravel\Tests;
 
 use Hampel\Cloudflare\Api\Entity\DnsRecord;
 use Hampel\Cloudflare\Api\Laravel\CloudflareManager;
+use Hampel\Cloudflare\Api\Laravel\CloudflareServiceProvider;
 use Hampel\Cloudflare\Api\Laravel\Facades\Cloudflare;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Http\Client\Request;
@@ -20,10 +21,11 @@ final class TransportTest extends TestCase
     #[Test]
     public function a_replacement_transport_is_used_by_every_account(): void
     {
-        // The reason ClientInterface is bound by interface rather than constructed inside the
-        // manager: an application with its own outbound HTTP policy - a proxy-aware,
-        // SSRF-guarded client everything is required to go through - binds it here and this
-        // package uses it, instead of the application writing a second API client.
+        // The reason the transport is bound under a container key rather than constructed inside
+        // the manager: an application with its own outbound HTTP policy - a proxy-aware,
+        // SSRF-guarded client everything is required to go through - binds it under
+        // cloudflare.http_client and this package uses it, instead of the application writing a
+        // second API client.
         $body = (string) json_encode(self::envelope(['id' => self::ZONE_ID, 'name' => 'example.com']));
 
         $recorder = new class ($body) implements ClientInterface {
@@ -50,7 +52,7 @@ final class TransportTest extends TestCase
             }
         };
 
-        $this->container()->instance(ClientInterface::class, $recorder);
+        $this->container()->instance(CloudflareServiceProvider::HTTP_CLIENT, $recorder);
 
         Cloudflare::zones()->get(self::ZONE_ID);
         Cloudflare::client('customers')->zones()->get(self::ZONE_ID);
@@ -148,7 +150,7 @@ final class TransportTest extends TestCase
         // handler, which is where Guzzle acts on them.
         $this->container()->make(Config::class)->set('cloudflare.timeout', 7);
         $this->container()->make(Config::class)->set('cloudflare.connect_timeout', 3);
-        $this->container()->forgetInstance(ClientInterface::class);
+        $this->container()->forgetInstance(CloudflareServiceProvider::HTTP_CLIENT);
         $this->container()->forgetInstance(CloudflareManager::class);
 
         $options = $this->optionsSeenByTheHandler();

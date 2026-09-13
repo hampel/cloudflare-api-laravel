@@ -139,6 +139,30 @@ running that corner.
 
 ## Facts worth not rediscovering
 
+- **The transport is bound under `cloudflare.http_client`, never under
+  `Psr\Http\Client\ClientInterface`, and with `singletonIf()`.** The shared PSR-18 key is one
+  container entry that every Laravel API wrapper used to bind, so in an application with several
+  installed the last provider registered supplied the transport for all of them — measured in a
+  Laravel Zero application with three wrappers, where Cloudflare calls ran on another package's
+  adapter and timeout, and the transport fixes in 1.1.1 never ran at all. The manager is built
+  only from this package's key, with no fallback to a `ClientInterface` binding, because another
+  package or library may be the one that bound it. `singletonIf()` because Laravel Zero registers
+  providers in `config/app.php` order and runs no discovery, so an application override in an
+  `AppServiceProvider` listed first would otherwise be replaced; `HttpClientOverrideTest` fails with
+  plain `singleton()`, probed 2026-09-14. `SharedPsr18BindingTest` covers both registration orders
+  — in the before-order it asserts the other binding **survives**, because "this package uses its
+  own transport" passed against the old code too, which won that order by overwriting. Its after
+  test re-registers with `force: true`; without it `register()` returns the existing instance and
+  the test passes vacuously. `a_sibling_adapter_that_is_also_faked_does_not_lend_its_timeout` is
+  the realistic case: the stub is a `PendingRequestClient` on the application's own faked factory,
+  so the response looks right whichever adapter sends and only the timeout tells them apart.
+
+  **Every one of these tests must fake the request, even where the transport under test bypasses
+  Laravel's HTTP client.** A regression hands the request back to this package's real adapter, and
+  without a fake that is a live call. It happened on 2026-09-14: probing
+  `HttpClientOverrideTest` against `singleton()` before it had a fake sent one real `GET` to
+  Cloudflare with the suite's dummy token. The same convention is in the other Laravel API
+  wrappers, so an application meets one override style: `<config key>.http_client`.
 - **The token variable is `CLOUDFLARE_API_TOKEN`, and `CLOUDFLARE_TOKEN` is read with `?:`, not as
   `env()`'s default.** The rename brings it in line with the sibling wrappers' `*_API_TOKEN`
   without breaking an existing `.env`. The obvious form, `env('CLOUDFLARE_API_TOKEN',
