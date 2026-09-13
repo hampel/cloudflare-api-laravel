@@ -154,6 +154,18 @@ running that corner.
   different one from the facade and `Http::fake()` does not intercept — the request reaches the
   real API. `singletonIf` in the provider closes it. `tests/LaravelZeroTest.php` builds the
   container by hand because Testbench always boots a full application and can never reach this.
+- **Laravel Zero does not run package discovery either, and nothing in this suite can see that.**
+  `LaravelZero\Framework\Application::registerBaseBindings()` empties the package manifest, so
+  `extra.laravel.providers` and `aliases` are ignored: after `composer require`, no config, no
+  manager binding and no alias. The consumer lists the provider in `config/app.php`; the facade then
+  works imported by class, but the global `Cloudflare` alias never exists. Verified 2026-09-13 in a
+  Laravel Zero 13.0.0 application, before and after the provider was listed, with `Http::fake()`
+  intercepting through both the injected manager and the imported facade.
+
+  **`LaravelZeroTest` does not cover this** — it registers the provider by hand, so it proves the
+  factory binding and never exercises registration. Testing registration would mean installing
+  Laravel Zero as a dev dependency to observe Laravel Zero's own behaviour, so it is documented in
+  the README's Installation section rather than tested. Reported by a consumer, not found here.
 - **`composer-require-checker` carries the undeclared-dependency check here, not the dev-free
   PHPStan job.** `laravel/framework` `replace`s every `illuminate/*` component, so the framework
   supplies every `Illuminate` symbol whether its component was declared or not. The five

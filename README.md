@@ -22,8 +22,8 @@ where the application is a Laravel application and its test suite already speaks
 composer require hampel/cloudflare-api-laravel
 ```
 
-The provider and the `Cloudflare` facade are registered by package discovery. Publish the config
-if you want to edit it:
+In a Laravel application the provider and the `Cloudflare` facade alias are registered by package
+discovery. Publish the config if you want to edit it:
 
 ```bash
 php artisan vendor:publish --tag=cloudflare-config
@@ -33,6 +33,34 @@ Set a token in the environment and nothing else is required:
 
 ```ini
 CLOUDFLARE_TOKEN=your-api-token
+```
+
+### Laravel Zero
+
+**Laravel Zero does not run package discovery**, so installing the package registers nothing:
+there is no config, no bound manager and no alias until the provider is listed by hand. Add it to
+`config/app.php`:
+
+```php
+'providers' => [
+    AppServiceProvider::class,
+    Hampel\Cloudflare\Api\Laravel\CloudflareServiceProvider::class,
+],
+```
+
+The global `Cloudflare` alias comes from discovery too, so it stays unavailable. Import the facade
+by its class, or inject the manager:
+
+```php
+use Hampel\Cloudflare\Api\Laravel\CloudflareManager;
+use Hampel\Cloudflare\Api\Laravel\Facades\Cloudflare;
+
+Cloudflare::zones()->all();                // the facade, imported
+
+public function handle(CloudflareManager $cloudflare): void
+{
+    $cloudflare->zones()->all();           // or injected
+}
 ```
 
 ## More than one token is the normal case, not an exotic one
@@ -208,9 +236,10 @@ Both go over this package's transport, so a test of either is faked like everyth
 PHP 8.3 or later; Laravel 12 or 13. Tested against PHP 8.3 and 8.5 at both ends of the Laravel
 range, including a `--prefer-lowest` resolution of Laravel 12.
 
-Laravel Zero is supported and has its own test, because its container does not bind the HTTP
-client factory that a full Laravel application does — without the binding this package adds, a
-fake would silently fail to intercept and the request would reach the real API.
+Laravel Zero is supported, with the provider registered by hand as described under Installation.
+The package also binds the HTTP client factory that a full Laravel application binds and Laravel
+Zero does not — without it, a fake would silently fail to intercept and the request would reach
+the real API.
 
 ## Versioning
 
