@@ -84,11 +84,12 @@ public function handle(CloudflareManager $cloudflare): void
 }
 ```
 
-## More than one token is the normal case, not an exotic one
+## Multiple tokens
 
-A Cloudflare API token is scoped — to named permissions, and to a list of zones or accounts. So
-"read every zone" and "edit records in this one zone" are two different credentials, and the
-narrower one is the one to reach for first. The configuration holds as many as you like:
+**More than one token is the normal case, not an exotic one.** A Cloudflare API token is scoped — to
+named permissions, and to a list of zones or accounts. So "read every zone" and "edit records in
+this one zone" are two different credentials, and the narrower one is the one to reach for first.
+The configuration holds as many as you like:
 
 ```php
 'accounts' => [
@@ -171,13 +172,14 @@ nowhere — no endpoint, no response header — so a verification that passes sa
 real and live, and says nothing about whether it can read a zone. The only way to find out whether
 a token can do something is to try it.
 
-## Http::fake() works, and that is the whole point
+## Testing with Http::fake()
 
-The core package takes a PSR-18 client, which is not Laravel's HTTP client — so by default nothing
-it sends is visible to `Http::fake()`, and an application testing against it has to fake at the
-transport library instead, in a vocabulary the rest of its suite does not use. This package binds
-an adapter that sends through Laravel's handler stack, so the fakes, `Http::assertSent()` and
-`Http::preventStrayRequests()` all reach it:
+**`Http::fake()` works, and that is the whole point of this package.** The core package takes a
+PSR-18 client, which is not Laravel's HTTP client — so by default nothing it sends is visible to
+`Http::fake()`, and an application testing against it has to fake at the transport library instead,
+in a vocabulary the rest of its suite does not use. This package binds an adapter that sends through
+Laravel's handler stack, so the fakes, `Http::assertSent()` and `Http::preventStrayRequests()` all
+reach it:
 
 ```php
 use Illuminate\Support\Facades\Http;
@@ -216,7 +218,7 @@ wrong, and the tests pin it.
 protocol version and curl options. A global header, query or body option is not applied, because
 the core package builds each request and it is sent as built.
 
-## Sending through your own HTTP client
+## Custom HTTP client
 
 An application with its own outbound HTTP policy — a proxy-aware, SSRF-guarded client that every
 request must go through — binds it under this package's key, and every account's client uses it:
@@ -281,7 +283,7 @@ the next five rather than only the one that went over. The response metadata car
 where Cloudflare reports it — but the rate limit headers are sent per endpoint, so a figure read
 from one says nothing about another, and their absence is not evidence of exhaustion.
 
-## What this package does not add
+## Other endpoints
 
 It adds no endpoints, no entities and no behaviour of its own. Everything reachable through the
 facade comes from the core package, which wraps zones (read-only), DNS records (full CRUD plus
