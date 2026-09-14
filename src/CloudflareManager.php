@@ -101,7 +101,12 @@ final class CloudflareManager
 
     private function build(string $name): Client
     {
-        $settings = $this->config->get('cloudflare.accounts.' . $name);
+        // The accounts array read whole and indexed by the name, never `cloudflare.accounts.<name>`:
+        // the config repository reads a dot as a path separator, so an account named after a
+        // domain - `example.com` - would be looked up as example -> com and reported as not
+        // configured while configuredAccounts() listed it.
+        $accounts = $this->config->get('cloudflare.accounts');
+        $settings = is_array($accounts) ? ($accounts[$name] ?? null) : null;
 
         if (! is_array($settings)) {
             throw UnknownAccount::named($name, $this->configuredAccounts());

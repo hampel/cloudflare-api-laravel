@@ -78,6 +78,25 @@ final class ManagerTest extends TestCase
     }
 
     #[Test]
+    public function an_account_whose_name_contains_a_dot_resolves(): void
+    {
+        // Naming an account after the domain it manages is a natural thing to do, and Laravel's
+        // config repository reads a dot as a path separator. Looked up as
+        // `cloudflare.accounts.example.com`, the name was split into example -> com, so an account
+        // configuredAccounts() listed could not be resolved. The manager reads the accounts array
+        // once and indexes it by the whole name.
+        $this->configure('example.com', ['token' => 'dotted-token']);
+
+        $this->assertContains('example.com', $this->manager()->configuredAccounts());
+
+        $client = $this->manager()->client('example.com');
+
+        // Its own token, not another account's: 'dotted-token' is twelve characters, the only account
+        // configured with that length.
+        $this->assertSame('a Cloudflare API token of 12 characters', $client->authentication()->describe());
+    }
+
+    #[Test]
     public function an_account_without_a_token_is_refused(): void
     {
         // Refused here rather than allowed to fail on first use. An empty credential reaches
