@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## Unreleased
+
+### Fixed
+
+- an account whose name contains a dot, such as `example.com`, resolves; it previously raised
+  `UnknownAccount` while `configuredAccounts()` listed it
+- the config comment and `README` list `Account Settings:Read`, the permission `accounts()` needs
+
 ## 1.2.0 (2026-09-14)
 
 ### Changed
