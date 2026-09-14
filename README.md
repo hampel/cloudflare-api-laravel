@@ -29,6 +29,12 @@ discovery. Publish the config if you want to edit it:
 php artisan vendor:publish --tag=cloudflare-config
 ```
 
+**An application's own `config/cloudflare.php` replaces these settings key by key.** Laravel merges
+a package's config beneath the application's, so any key the application's file sets wins, whatever
+it meant there. If the application already has a `config/cloudflare.php` for something else, check
+it for `default`, `accounts`, `page_size`, `base_uri`, `timeout` and `connect_timeout` before
+installing.
+
 Set a token in the environment and nothing else is required:
 
 ```ini
