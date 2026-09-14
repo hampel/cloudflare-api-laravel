@@ -34,7 +34,10 @@ return [
     | first. Create them at https://dash.cloudflare.com/profile/api-tokens.
     |
     | What a token needs for this package: Zone:Read to see zones, DNS:Read to read
-    | records, DNS:Edit to change them.
+    | records, DNS:Edit to change them, and Account Settings:Read to list accounts
+    | through Cloudflare::accounts(). A zone-scoped token without it is answered with
+    | an empty list rather than a refusal, so an empty result says the token reaches
+    | no account, not that there is none.
     |
     | An account with no token is refused when its client is built rather than
     | allowed to fail on first use. There is no anonymous request on this API to fall

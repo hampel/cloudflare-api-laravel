@@ -100,7 +100,8 @@ Cloudflare::client('customers')->zones()->all();   // a named one
 
 Calls that do not name an account go to the default, so a single-token application never writes
 `client()` at all. Create tokens at `https://dash.cloudflare.com/profile/api-tokens`; this package
-needs `Zone:Read` to see zones, `DNS:Read` to read records and `DNS:Edit` to change them.
+needs `Zone:Read` to see zones, `DNS:Read` to read records and `DNS:Edit` to change them, plus
+`Account Settings:Read` to list accounts through `Cloudflare::accounts()`.
 
 The Global API Key is deliberately not supported. It cannot be scoped to a zone, cannot be
 verified, and grants everything the account can do to anything that gets hold of it.
