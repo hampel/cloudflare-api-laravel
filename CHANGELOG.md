@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 1.3.0 (2026-09-14)
 
 ### Added
 
@@ -11,8 +11,6 @@
 ### Changed
 
 - requires `hampel/cloudflare-api` `^1.1.0`, raised from `^1.0.1`
-
-## 1.2.1 (2026-09-14)
 
 ### Fixed
 
