@@ -94,6 +94,9 @@ final class TransportTest extends TestCase
         // configured and change nothing.
         $this->container()->make(Config::class)->set('cloudflare.base_uri', 'http://localhost:8080');
 
+        // Contained: if the base URI stops reaching the request, it goes to Cloudflare's own host,
+        // which the fake below does not match. The stray guard stops it there.
+        Http::preventStrayRequests();
         Http::fake(['localhost:8080/*' => Http::response(self::envelope(self::zone()))]);
 
         Cloudflare::zones()->get(self::ZONE_ID);

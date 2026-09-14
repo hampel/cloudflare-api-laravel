@@ -126,11 +126,17 @@ final class HttpFakeTest extends TestCase
         // these stubs existed, and the request would go to the real API. On a package that
         // edits DNS that is not a test failure, it is a live change to somebody's zone.
         // PendingRequestClient rebuilds per send, so it does not happen.
+        //
+        // Contained: a cached pending request would never see the stray guard below, so if this
+        // regresses the escaped request goes to a reserved .invalid host and fails to resolve,
+        // rather than reaching Cloudflare with the suite's token.
+        $this->container()->make('config')->set('cloudflare.base_uri', 'https://api.cloudflare.invalid');
+
         $client = Cloudflare::client();
 
         Http::preventStrayRequests();
         Http::fake([
-            'api.cloudflare.com/*' => Http::response(self::envelope(self::zone(null, 'late.example.com'))),
+            'api.cloudflare.invalid/*' => Http::response(self::envelope(self::zone(null, 'late.example.com'))),
         ]);
 
         $this->assertSame('late.example.com', $client->zones()->get(self::ZONE_ID)->name);

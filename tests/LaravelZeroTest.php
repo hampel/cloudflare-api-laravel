@@ -45,10 +45,15 @@ final class LaravelZeroTest extends \PHPUnit\Framework\TestCase
         // Without the singleton in the provider this reached the network.
         $app = $this->laravelZeroApplication();
 
+        // Contained: the regression this guards resolves a fresh, unfaked factory, which neither a
+        // fake nor a stray guard reaches. So the request is pointed at a reserved .invalid host,
+        // and a regression fails to resolve rather than reaching Cloudflare with the test token.
+        $app->make('config')->set('cloudflare.base_uri', 'https://api.cloudflare.invalid');
+
         $client = $app->make(CloudflareManager::class)->client('main');
 
         Http::fake([
-            'api.cloudflare.com/*' => Http::response([
+            'api.cloudflare.invalid/*' => Http::response([
                 'success' => true,
                 'errors' => [],
                 'messages' => [],
