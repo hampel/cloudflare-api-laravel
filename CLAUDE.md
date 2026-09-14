@@ -232,10 +232,19 @@ running that corner.
 - **Laravel Zero does not bind the HTTP client factory, and Testbench cannot see that.** Laravel
   binds `Illuminate\Http\Client\Factory` as a singleton in `FoundationServiceProvider`; Laravel
   Zero's provider set does not, and `app:install http` only runs `composer require
-  illuminate/http`. Unbound, every `make()` builds a fresh factory, so the package holds a
-  different one from the facade and `Http::fake()` does not intercept — the request reaches the
-  real API. `singletonIf` in the provider closes it. `tests/LaravelZeroTest.php` builds the
-  container by hand because Testbench always boots a full application and can never reach this.
+  illuminate/http`. Unbound, every `make()` builds a fresh factory, so the adapter resolves a
+  different one from the facade. **Faking survives that** — `Http::fake()`, `fakeSequence()`,
+  `preventStrayRequests()` and `stubUrl()` all `swap()` into the container — **but
+  `Http::globalOptions()` and `Http::globalMiddleware()` do not**, so a proxy or CA bundle set
+  globally is silently dropped from this package's requests. `singletonIf` in the provider closes
+  it. `tests/LaravelZeroTest.php` builds the container by hand because Testbench always boots a
+  full application and can never reach this.
+
+  **Its behavioural test used to fake after resolving and assert the fake intercepted, which went
+  vacuous in 1.1.1** once the adapter resolved the factory per send: probed 2026-09-14 with the
+  singleton removed, it still passed. It now sets a global option through the facade, with a
+  middleware that answers the request itself and `base_uri` on `.invalid`, and fails without the
+  singleton.
 - **Laravel Zero does not run package discovery either, and nothing in this suite can see that.**
   `LaravelZero\Framework\Application::registerBaseBindings()` empties the package manifest, so
   `extra.laravel.providers` and `aliases` are ignored: after `composer require`, no config, no

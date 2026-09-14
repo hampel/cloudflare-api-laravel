@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Hampel\Cloudflare\Api\Laravel\Tests;
 
+use GuzzleHttp\Promise\Create;
+use GuzzleHttp\Promise\PromiseInterface;
+use GuzzleHttp\Psr7\Response;
 use Hampel\Cloudflare\Api\Laravel\CloudflareManager;
 use Hampel\Cloudflare\Api\Laravel\CloudflareServiceProvider;
 use Illuminate\Config\Repository as ConfigRepository;
@@ -15,6 +18,7 @@ use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\Facades\Http;
 use Monolog\Handler\NullHandler;
 use PHPUnit\Framework\Attributes\Test;
+use Psr\Http\Message\RequestInterface;
 
 /**
  * The package on a Laravel Zero application, which is not the same container as a Laravel one.
@@ -22,13 +26,14 @@ use PHPUnit\Framework\Attributes\Test;
  * Laravel binds Illuminate\Http\Client\Factory as a singleton in FoundationServiceProvider.
  * Laravel Zero does not register that provider - its own set is Build, Cache, Collision,
  * CommandRecorder, Composer, Filesystem, GitVersion and NullLogger - so unless this package binds
- * one, the container builds a fresh Factory on every make() and the instance this package holds
- * is not the instance the Http facade configures.
+ * one, the container builds a fresh Factory on every make() and the adapter, which resolves the
+ * factory per send, gets a different instance from the one the Http facade configures.
  *
- * The consequence is the failure the package exists to prevent, and it is silent: the fake does
- * not intercept and the request goes to the real API. On a DNS client that is a live change to
- * somebody's zone made by a test run. Testbench boots a full application, so nothing in the rest
- * of the suite can see it.
+ * Faking survives that, because Http::fake() and preventStrayRequests() swap() their instance
+ * into the container. What does not survive is configuration made through the facade without a
+ * swap - Http::globalOptions(), Http::globalMiddleware() - which would be silently dropped from
+ * this package's requests. Testbench boots a full application, so nothing in the rest of the
+ * suite can see it.
  *
  * Laravel Zero is also a likely home for this package. A tool that reconciles DNS from a file, or
  * updates a record for a dynamic address, or renews a certificate, is a command rather than a web
@@ -39,30 +44,43 @@ final class LaravelZeroTest extends \PHPUnit\Framework\TestCase
     private const ZONE_ID = '023e105f4ecef8ad9ca31a8372d0c353';
 
     #[Test]
-    public function a_fake_registered_after_the_client_was_resolved_still_intercepts(): void
+    public function a_global_option_set_through_the_facade_reaches_the_request(): void
     {
-        // The realistic ordering: a command resolves its client, and the test fakes after.
-        // Without the singleton in the provider this reached the network.
+        // The behaviour the provider's factory singleton protects. Http::globalOptions() and
+        // Http::globalMiddleware() configure the facade's own resolved instance and never touch
+        // the container. Unbound, the adapter's per-send make() builds a different factory, so a
+        // proxy or CA bundle an application set globally is silently dropped from this package's
+        // requests. (Http::fake() and preventStrayRequests() are NOT the risk here: both swap()
+        // their instance into the container, so the adapter finds them with or without the
+        // singleton - which is what the test this replaces used to assert, vacuously.)
+        //
+        // Fully offline: the middleware answers the request itself, so nothing reaches a handler
+        // that could open a connection. And contained regardless: base_uri is a reserved .invalid
+        // host, so if the middleware is lost the request fails to resolve rather than reaching
+        // Cloudflare with the test token.
         $app = $this->laravelZeroApplication();
-
-        // Contained: the regression this guards resolves a fresh, unfaked factory, which neither a
-        // fake nor a stray guard reaches. So the request is pointed at a reserved .invalid host,
-        // and a regression fails to resolve rather than reaching Cloudflare with the test token.
         $app->make('config')->set('cloudflare.base_uri', 'https://api.cloudflare.invalid');
 
         $client = $app->make(CloudflareManager::class)->client('main');
 
-        Http::fake([
-            'api.cloudflare.invalid/*' => Http::response([
-                'success' => true,
-                'errors' => [],
-                'messages' => [],
-                'result' => ['id' => self::ZONE_ID, 'name' => 'example.com', 'status' => 'active'],
-            ]),
-        ]);
+        /** @var \ArrayObject<int, mixed> $verify */
+        $verify = new \ArrayObject();
 
         try {
+            Http::globalOptions(['verify' => '/etc/ssl/certs/corporate-ca.pem']);
+            Http::globalMiddleware(static fn (callable $handler): callable => static function (RequestInterface $request, array $options) use ($verify): PromiseInterface {
+                $verify[] = $options['verify'] ?? null;
+
+                return Create::promiseFor(new Response(200, ['Content-Type' => 'application/json'], (string) json_encode([
+                    'success' => true,
+                    'errors' => [],
+                    'messages' => [],
+                    'result' => ['id' => self::ZONE_ID, 'name' => 'example.com', 'status' => 'active'],
+                ])));
+            });
+
             $this->assertSame('example.com', $client->zones()->get(self::ZONE_ID)->name);
+            $this->assertSame(['/etc/ssl/certs/corporate-ca.pem'], $verify->getArrayCopy());
         } finally {
             $this->tearDownFacades();
         }

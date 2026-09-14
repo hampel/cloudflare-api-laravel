@@ -50,14 +50,15 @@ final class CloudflareServiceProvider extends ServiceProvider
         // is Build, Cache, Collision, CommandRecorder, Composer, Filesystem, GitVersion and
         // NullLogger, and nothing there binds it. `app:install http` does not either: it runs
         // `composer require illuminate/http` and stops. Unbound, the container builds a fresh
-        // Factory on every make(), so the one this package holds is not the one the Http facade
-        // configures, and Http::fake() silently fails to intercept: the request goes to the
-        // real API, which on this package means a live change to somebody's DNS.
+        // Factory on every make(), so the one the adapter resolves per send is not the one the
+        // Http facade configures.
         //
-        // Http::fake() hides the ordering, which is what makes it dangerous. fake() calls
-        // Facade::swap(), which binds its instance into the container - so faking BEFORE the
-        // client is resolved happens to work, and faking after it does not. Binding a singleton
-        // here removes the ordering question on both platforms.
+        // Faking survives that - Http::fake() and preventStrayRequests() swap() their instance
+        // into the container, where the adapter finds it. What is lost is configuration made
+        // through the facade without a swap: Http::globalOptions() and Http::globalMiddleware()
+        // set a proxy, a CA bundle or middleware on an instance this package never sends
+        // through, and are silently dropped from its requests. Binding a singleton here gives
+        // the facade and the adapter one instance on both platforms.
         //
         // singletonIf, so a full Laravel application keeps the framework's own binding and this
         // is a no-op there.
