@@ -219,10 +219,16 @@ running that corner.
   13.31.0 and 12.61.1.
 - **`failOnDeprecation` is inert in a Testbench package without help.** Laravel's `HandleExceptions`
   replaces PHPUnit's error handler when the application boots. `withoutDeprecationHandling()` in
-  `setUp()` fixes it for test-executed paths — but the provider's own `register()` has already run
-  inside `parent::setUp()`, so
+  `setUp()` fixes it for test-executed paths — but the provider's own `register()` and `boot()`
+  have already run inside `parent::setUp()`, so
   `ConfigurationTest::registering_the_provider_binds_the_manager_and_merges_the_config` registers
-  it again against an application built in the test body.
+  the provider again against an application built in the test body, and
+  `booting_the_provider_publishes_this_packages_config` boots it there too. **`boot()` needs its
+  own test**: probed 2026-09-14, a deprecation planted in `boot()` left the suite at exit 0 while
+  the `register()` test existed, because nothing booted a hand-built application. The boot test
+  empties `ServiceProvider`'s static publish registry first — probed with the hand-built
+  application alone skipping `publishes()`, it fails when emptied and passes vacuously when not,
+  because Testbench's own boot registered the same source path.
 - **Laravel Zero does not bind the HTTP client factory, and Testbench cannot see that.** Laravel
   binds `Illuminate\Http\Client\Factory` as a singleton in `FoundationServiceProvider`; Laravel
   Zero's provider set does not, and `app:install http` only runs `composer require

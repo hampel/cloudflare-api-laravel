@@ -135,6 +135,50 @@ final class ConfigurationTest extends TestCase
         $this->assertSame('main', $app->make(Config::class)->get('cloudflare.default'));
     }
 
+    #[Test]
+    public function booting_the_provider_publishes_this_packages_config(): void
+    {
+        // boot() needs the same treatment as register() above, for the same reason: Testbench boots
+        // every provider inside parent::setUp(), before withoutDeprecationHandling() restores the
+        // strict handler, so a deprecation raised in boot() during setUp is discarded. Booting it
+        // here, against an application built in the test body, is the only place boot() runs
+        // under PHPUnit's handler.
+        //
+        // The publish registry is emptied first because it is STATIC and keyed by provider class,
+        // and Testbench's own boot has already filled it for this exact class. Left as it is, this
+        // assertion passes when the provider under test published nothing, since Testbench's entry
+        // names the same source path; and the booted second application would corrupt what
+        // the_config_file_is_publishable_under_its_own_tag reads. Saved and restored around the test.
+        $publishes = new \ReflectionProperty(ServiceProvider::class, 'publishes');
+        $groups = new \ReflectionProperty(ServiceProvider::class, 'publishGroups');
+        $savedPublishes = $publishes->getValue();
+        $savedGroups = $groups->getValue();
+
+        try {
+            $publishes->setValue(null, []);
+            $groups->setValue(null, []);
+
+            $app = new Application(__DIR__ . '/..');
+            $app->instance('config', new ConfigRepository());
+
+            $provider = new CloudflareServiceProvider($app);
+            $provider->register();
+            $provider->boot();
+
+            // The source path, not the destination: the destination is this throwaway
+            // application's config directory and says nothing about the package.
+            $this->assertSame(
+                [realpath(__DIR__ . '/../config/cloudflare.php')],
+                array_map('realpath', array_keys(
+                    ServiceProvider::pathsToPublish(CloudflareServiceProvider::class, 'cloudflare-config')
+                )),
+            );
+        } finally {
+            $publishes->setValue(null, $savedPublishes);
+            $groups->setValue(null, $savedGroups);
+        }
+    }
+
     /**
      * @return array<string, array{array<string, string>, string|null}>
      */
