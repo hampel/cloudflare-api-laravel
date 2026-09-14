@@ -92,11 +92,21 @@ clutter to be tidied away:
   by its IP filter, and a 403 with any other code means the credential is wrong. **Only the
   Laravel 12 CI job catches any of them** — on 13 the suite passes with the first two gone.
 
-## The core package constraint is `^1.0.1`, and one major only
+## The core package constraint is `^1.1.0`, and one major only
 
-**The patch floor is deliberate.** 1.0.0 read every 403 with code 9109 as a missing zone, but
-Cloudflare also sends 9109 for a token used from outside its IP address filter, so from a filtered
-address `find()` answered "no such zone" for a zone that exists. 1.0.1 raises
+**The floor is set by the facade's annotations.** 1.1.0 added `Client::registrations()`, and the
+facade annotates it, so on anything older `FacadeConformanceTest` fails twice: the annotation names
+a method the client lacks, and a return type that does not exist. Measured 2026-09-14 with the
+annotation in place: the `--prefer-lowest` corner on a `^1.0.1` floor resolved 1.0.1 and failed both
+tests; on `^1.0.1` without the annotation, a fresh CI install resolves 1.1.0 and fails the check
+that every client method is annotated. **So every new `Client` accessor raises the floor to the
+release that added it** — the annotation and the constraint move together, or one of the two CI
+corners goes red.
+
+**Before that, the patch floor was 1.0.1, and that reason still holds.** 1.0.0 read every 403 with
+code 9109 as a missing zone, but Cloudflare also sends 9109 for a token used from outside its IP
+address filter, so from a filtered address `find()` answered "no such zone" for a zone that
+exists. 1.0.1 raises
 `NotAuthenticatedException` for that case, and
 `ExceptionPassthroughTest::a_token_refused_by_its_ip_filter_raises_rather_than_reading_as_a_missing_zone`
 depends on it — measured 2026-09-13, it fails on 1.0.0 and passes on 1.0.1, and the

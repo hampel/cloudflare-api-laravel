@@ -39,6 +39,10 @@ return [
     | an empty list rather than a refusal, so an empty result says the token reaches
     | no account, not that there is none.
     |
+    | Account / Registrar: Domains / Read is needed for Cloudflare::registrations().
+    | It is account-level, so the token's Account Resources must include the account
+    | whose domains it reads.
+    |
     | An account with no token is refused when its client is built rather than
     | allowed to fail on first use. There is no anonymous request on this API to fall
     | back to, and an empty credential comes back as a 400 about malformed request

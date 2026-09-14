@@ -11,6 +11,7 @@ use Hampel\Cloudflare\Api\Connection;
 use Hampel\Cloudflare\Api\Endpoint\Accounts;
 use Hampel\Cloudflare\Api\Endpoint\DnsRecords;
 use Hampel\Cloudflare\Api\Endpoint\Endpoint;
+use Hampel\Cloudflare\Api\Endpoint\Registrations;
 use Hampel\Cloudflare\Api\Endpoint\Tokens;
 use Hampel\Cloudflare\Api\Endpoint\Zones;
 use Hampel\Cloudflare\Api\Result\TokenVerification;
@@ -54,6 +55,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static Zones zones()
  * @method static DnsRecords records()
  * @method static Accounts accounts()
+ * @method static Registrations registrations()
  * @method static Connection connection()
  *
  * @see \Hampel\Cloudflare\Api\Laravel\CloudflareManager

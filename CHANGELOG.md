@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## Unreleased
+
+### Added
+
+- `Cloudflare::registrations()` is annotated on the facade, for the Registrar endpoint that
+  `hampel/cloudflare-api` 1.1.0 adds. The config comment and `README` list the
+  `Account / Registrar: Domains / Read` permission it needs
+
+### Changed
+
+- requires `hampel/cloudflare-api` `^1.1.0`, raised from `^1.0.1`
+
 ## 1.2.1 (2026-09-14)
 
 ### Fixed
