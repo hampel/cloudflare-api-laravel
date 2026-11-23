@@ -305,7 +305,7 @@ Both go over this package's transport, so a test of either is faked like everyth
 
 ## Requirements
 
-PHP 8.3 or later; Laravel 12 or 13. Tested against PHP 8.3 and 8.5 at both ends of the Laravel
+PHP 8.3 or later; Laravel 12.71 or later, or 13.40 or later. Tested against PHP 8.3 and 8.5 at both ends of the Laravel
 range, including a `--prefer-lowest` resolution of Laravel 12.
 
 Laravel Zero is supported, with the provider registered by hand as described under Installation.

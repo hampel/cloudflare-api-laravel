@@ -147,6 +147,28 @@ documenting the fix that `^0.1` excludes. So the lesson is not "read the constra
 carefully": raise the floor whenever a test depends on a fix, and do not widen it back without
 running that corner.
 
+## The Laravel floors are the lowest releases Composer will install
+
+`illuminate/*` is `^12.71|^13.40`. **Composer 2.9 and later refuse a release affected by a
+published security advisory**, by default, so on 2026-11-24 — measured on PHP 8.3 with Composer
+2.11.1 — `laravel/framework` 12.70.0 and 13.39.0 were refused and 12.71.0 and 13.40.0 installed.
+A floor below that declared versions nobody could install or test, and the `--prefer-lowest` job
+silently resolved 12.71 while its label said 12.0. The suite and PHPStan level 10 were run at both
+floors on PHP 8.3 before the constraint moved.
+
+**When a new advisory covers the floor, the `--prefer-lowest` job fails to resolve.** Raise the
+floor to what resolves, raise the `laravel:` values in the CI matrix to match, and re-run the suite
+and PHPStan there on PHP 8.3. To measure, from a copy with a lock file present (Composer refuses a
+partial update without one, and the error is easy to misread as success):
+
+```bash
+composer update "laravel/framework:12.70.0" "orchestra/testbench:^10.0" -W --dry-run
+composer update "laravel/framework:13.39.0" -W --dry-run
+```
+
+`orchestra/testbench` is named in the first because a lock holding Testbench 11 requires Laravel
+13, and the update is refused for that reason before any advisory is consulted.
+
 ## Facts worth not rediscovering
 
 - **The transport is bound under `cloudflare.http_client`, never under

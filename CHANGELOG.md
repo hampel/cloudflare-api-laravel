@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## Unreleased
+
+### Changed
+
+- minimum Laravel versions are now 12.71 and 13.40; `illuminate/*` requires `^12.71|^13.40`
+
+### Fixed
+
+- `README` notes that an application's own `config/cloudflare.php` replaces this package's
+  settings key by key
+
 ## 1.3.0 (2026-09-14)
 
 ### Added
