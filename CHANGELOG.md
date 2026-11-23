@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## 1.4.0 (2026-11-24)
 
 ### Changed
 
