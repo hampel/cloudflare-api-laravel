@@ -214,8 +214,8 @@ final class ExceptionPassthroughTest extends TestCase
     #[Test]
     public function faking_with_no_arguments_is_loud_rather_than_an_empty_zone(): void
     {
-        // Worth pinning because the sibling packages differ here, and the difference is in this
-        // package's favour. Http::fake() with no arguments answers every request with an empty
+        // Worth pinning because clients of APIs that answer a bare collection, or use 204, cannot be
+        // this strict, and the difference is in this package's favour. Http::fake() with no arguments answers every request with an empty
         // 200. On an API whose every endpoint answers in an envelope, an empty body cannot be a
         // valid answer - so the core package raises rather than reading it as "this zone has no
         // records".

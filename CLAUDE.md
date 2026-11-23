@@ -54,8 +54,8 @@ clutter to be tidied away:
   because the test's `base_uri` is a reserved `.invalid` host. **Keep that host in
   `HttpFakeTest::a_swapped_factorys_stray_request_guard_applies_to_a_client_resolved_before_it`**
   — probing it with the fix reverted is otherwise a real request to Cloudflare with the suite's
-  dummy token. Closed local ports are no substitute: under WSL-style mirrored networking they time
-  out rather than refuse.
+  dummy token. Closed local ports are no substitute: under some network setups they time out
+  rather than refuse.
 - **The pending request's options are passed on by hand, as an allowlist.** `PendingRequest`
   merges `->timeout()`, `->connectTimeout()` and `Http::globalOptions()` only inside its own
   `sendRequest()`, which the adapter never calls — so before `transportOptions()` existed the
@@ -196,8 +196,9 @@ composer update "laravel/framework:13.39.0" -W --dry-run
   Cloudflare with the suite's dummy token. The same convention is in the other Laravel API
   wrappers, so an application meets one override style: `<config key>.http_client`.
 - **The token variable is `CLOUDFLARE_API_TOKEN`, and `CLOUDFLARE_TOKEN` is read with `?:`, not as
-  `env()`'s default.** The rename brings it in line with the sibling wrappers' `*_API_TOKEN`
-  without breaking an existing `.env`. The obvious form, `env('CLOUDFLARE_API_TOKEN',
+  `env()`'s default.** The rename brings it in line with the `*_API_TOKEN` names of
+  `hampel/binarylane-api-laravel` and `hampel/linode-api-laravel`, without breaking an existing
+  `.env`. The obvious form, `env('CLOUDFLARE_API_TOKEN',
   env('CLOUDFLARE_TOKEN'))`, fails in the one situation a rename creates: a blank
   `CLOUDFLARE_API_TOKEN=` line copied from an updated example while the real token still sits
   under the old name is an empty string, not null, so the default never applies and the account
