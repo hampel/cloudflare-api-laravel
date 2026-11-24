@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## Unreleased
+
+### Changed
+
+- minimum Guzzle and PSR-7 versions are now the lowest Composer will install: `guzzlehttp/guzzle`
+  requires `^7.15.2|^8.1` and `guzzlehttp/psr7` requires `^2.13|^3.1`
+
 ## 1.4.0 (2026-11-24)
 
 ### Changed

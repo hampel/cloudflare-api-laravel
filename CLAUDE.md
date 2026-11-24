@@ -147,7 +147,7 @@ documenting the fix that `^0.1` excludes. So the lesson is not "read the constra
 carefully": raise the floor whenever a test depends on a fix, and do not widen it back without
 running that corner.
 
-## The Laravel floors are the lowest releases Composer will install
+## The Laravel, Guzzle and PSR-7 floors are the lowest releases Composer will install
 
 `illuminate/*` is `^12.71|^13.40`. **Composer 2.9 and later refuse a release affected by a
 published security advisory**, by default, so on 2026-11-24 — measured on PHP 8.3 with Composer
@@ -168,6 +168,24 @@ composer update "laravel/framework:13.39.0" -W --dry-run
 
 `orchestra/testbench` is named in the first because a lock holding Testbench 11 requires Laravel
 13, and the update is refused for that reason before any advisory is consulted.
+
+**Guzzle and PSR-7 are floored the same way**, at `^7.15.2|^8.1` and `^2.13|^3.1`. Measured on
+2026-11-24 on PHP 8.3 with Composer 2.11.1: Guzzle 7.15.1 and 8.0.0 and PSR-7 2.12.0 were refused
+for advisories, and 7.15.2, 8.1.0, 2.13.0 and 3.1.0 installed. Laravel's own `^7.8.2` on Guzzle used
+to make a lower floor look harmless; it no longer decides anything. PSR-7 3.0.0 is not refused but
+cannot be installed, because every installable Guzzle 8 requires `^3.1`. A PSR-7 3.x floor has to
+be measured together with `"guzzlehttp/guzzle:^8.1"`, since the lock's Guzzle 7 pins PSR-7 to 2.x
+and `-W` does not unlock it:
+
+```bash
+composer update "guzzlehttp/guzzle:7.15.1" -W --dry-run
+composer update "guzzlehttp/psr7:2.12.0" "guzzlehttp/guzzle:^7.15" -W --dry-run
+composer update "guzzlehttp/psr7:3.0.0" "guzzlehttp/guzzle:^8.1" -W --dry-run
+```
+
+**Resolve the copy's lock on PHP 8.3 before measuring.** A lock written on PHP 8.5 holds Symfony 8,
+which needs PHP 8.4, so on 8.3 every request fails on Symfony and nothing is learnt about the
+package being asked for.
 
 ## Facts worth not rediscovering
 
